@@ -1,0 +1,20 @@
+# Arduino build output
+build/
+arduino/test/test_led_state
+arduino/test/test_controls
+arduino/test/test_trackball
+
+# Android / Gradle
+.gradle/
+local.properties
+*.apk
+*.aab
+
+# Python
+__pycache__/
+
+# Agent working directories and process scratch space
+.claude/
+.superpowers/
+.playwright-mcp/
+docs/superpowers/
