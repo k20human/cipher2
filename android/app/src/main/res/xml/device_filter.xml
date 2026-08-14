@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- 0x2341 = 9025, Arduino SA. Matching the vendor rather than the product
+         keeps this working if the board is ever swapped for another 32U4. -->
+    <usb-device vendor-id="9025" />
+</resources>
