@@ -1,0 +1,141 @@
+/* The five "Effets" toggles declared in core-settings.js, which for a long
+   while had no code behind them. Every class here (fx-scanlines, fx-grain,
+   fx-vignette, fx-glitch, fx-glow) is applied to <body> by
+   src/core/effects.js's applyEffects(),
+   never written by hand in markup.
+
+   Scanlines, grain and vignette share one fixed, full-viewport layer
+   (#overlay, in index.html) so the compositor paints them once and never
+   again — none of the three ever changes on its own, so there is nothing to
+   repaint on the interface's account, whatever it is doing underneath.
+   pointer-events: none is load-bearing, not decorative: without it this
+   transparent layer, stacked above #deck, would intercept every tap on a
+   tile or the settings button before the element actually under the finger
+   ever saw it. */
+#overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 2;
+  pointer-events: none;
+}
+
+#overlay::before,
+#overlay::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+}
+
+/* SCANLINES — #overlay::before. A repeating gradient, not an animation: the
+   CRT-raster look for the cost of one paint, ever. Pitch is a clamp anchored
+   on vmin (the codebase's own convention — see layout.css's .tile__icon)
+   rather than a fixed px count, so the texture reads the same density on
+   any screen instead of one calibrated to a single device. Bare vmin: the
+   0.1rem floor it used to carry dominated everything below 500px of
+   min(width, height) — which is every landscape phone this deck runs on,
+   the reference device included — so the "scales with the screen" the
+   clamp was written for never actually happened. */
+body.fx-scanlines #overlay::before {
+  background-image: repeating-linear-gradient(
+    to bottom,
+    color-mix(in srgb, var(--bg) 55%, transparent) 0,
+    color-mix(in srgb, var(--bg) 55%, transparent) 50%,
+    transparent 50%,
+    transparent 100%
+  );
+  background-size: 100% 0.32vmin;
+}
+
+/* GRAIN — #overlay::after. feTurbulence rasterised once by the engine and
+   tiled, never a fetched image, by design: no image file and no network
+   request. Colour comes entirely from background-color, a theme variable;
+   the inline SVG supplies only the mask's alpha, so recolouring a theme
+   recolours the grain with it instead of leaving a fixed literal to fight
+   the palette. */
+body.fx-grain #overlay::after {
+  background-color: var(--fg);
+  opacity: 0.05;
+  mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='100' height='100'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100' height='100' filter='url(%23n)'/%3E%3C/svg%3E");
+  mask-size: 9vmin;
+  mask-repeat: repeat;
+  -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='100' height='100'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100' height='100' filter='url(%23n)'/%3E%3C/svg%3E");
+  -webkit-mask-size: 9vmin;
+  -webkit-mask-repeat: repeat;
+}
+
+/* VIGNETTE — #overlay itself. Darkens the frame's edges toward the theme's
+   own background, never a black literal: matrix's --bg happens to be pure
+   black, but nightcity's and arasaka's are not exactly black either, and
+   this stays correct if a future theme ships a lighter one. */
+body.fx-vignette #overlay {
+  background-image: radial-gradient(
+    ellipse at 50% 50%,
+    transparent 55%,
+    color-mix(in srgb, var(--bg) 80%, transparent) 100%
+  );
+}
+
+/* GLOW — text-shadow, chosen over filter: drop-shadow, and
+   cheaper besides. Deliberately NOT scoped to #deck: inherited from there
+   it reached every readable line in the interface at once, and a halo on
+   ~10px status, journal and label text does not read as a glow — it fills
+   the counters of the glyphs and smears the whole column, which is what
+   "je ne vois rien" was about. Reducing the radius did not fix it, because
+   the problem is not the radius: small text has no room for a halo at any
+   radius.
+
+   So this now names the two elements large enough to carry one — the
+   wordmark and the hour — and nothing else. Both are display type, both
+   are the deck's focal points in the reference photo, and both stay legible
+   with a halo because the glyph is many times the blur. Text-shadow still
+   inherits, so #logo passes it to the wordmark span logo.js mounts inside
+   it; the three logo treatments that declare their own (logo.css) keep
+   theirs, a local declaration winning over an inherited one rather than
+   adding to it.
+
+   0.12em, not a vmin clamp: a halo has to scale with the glyph it sits on,
+   not the viewport, and em is proportional by construction — one value that
+   reads correctly at the clock's size and the wordmark's alike, on any
+   screen. The toggle now ships off by default (schema.js): it is an effect
+   to add once the deck is legible, not part of the legible baseline. */
+body.fx-glow #logo,
+body.fx-glow .clock__time {
+  text-shadow: 0 0 0.12em var(--glow);
+}
+
+/* GLITCH — a position jitter on the logo and the clock only. Not to be
+   confused with .logo--glitch (logo.css, schema.js's LOGO_STYLES): that is
+   one of four selectable *logo treatments*, always present regardless of
+   this toggle; fx-glitch is the "Glitch" checkbox in the Effets section and
+   applies on top of whichever logo style is active. left/top, not transform:
+   .logo--major already carries its own transform (skewX, logo.css) — a
+   static declaration, not an animation — and a second transform here would
+   replace that value outright on every glitched frame instead of combining
+   with it, losing the skew rather than adding to it. */
+@keyframes fx-glitch-shift {
+  0%, 92%, 100% { left: 0; top: 0; opacity: 1; }
+  93% { left: -0.4vmin; top: 0.2vmin; opacity: 0.7; }
+  95% { left: 0.4vmin; top: -0.2vmin; opacity: 1; }
+  97% { left: -0.2vmin; top: 0; opacity: 0.85; }
+}
+
+body.fx-glitch #logo,
+body.fx-glitch .module--clock {
+  position: relative;
+  animation: fx-glitch-shift 4s steps(1, end) infinite;
+}
+
+/* As the five canvas-free avatars already do (avatars.css) — between the two
+   files, every CSS `animation` this app declares honours reduced motion.
+   That is not the same as every source of motion: the background rain and
+   the three canvas avatars (nexus, vortex, cipher-core) redraw via
+   requestAnimationFrame, not a CSS animation, and none of them checks
+   prefers-reduced-motion. Left as a known gap, not implemented here —
+   engine.js is where it would have to live, and that is out of scope for
+   this fix. */
+@media (prefers-reduced-motion: reduce) {
+  body.fx-glitch #logo,
+  body.fx-glitch .module--clock {
+    animation: none;
+  }
+}

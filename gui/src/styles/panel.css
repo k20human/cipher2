@@ -1,0 +1,144 @@
+.panel {
+  position: fixed;
+  inset: 0;
+  z-index: 4;
+  display: flex;
+  align-items: flex-end;
+  background: color-mix(in srgb, var(--bg) 70%, transparent);
+}
+
+.panel[hidden] { display: none; }
+
+.panel__sheet {
+  width: 100%;
+  max-height: 85vh;
+  display: flex;
+  flex-direction: column;
+  background: var(--bg);
+  border-top: 1px solid var(--accent);
+}
+
+.panel__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--gap);
+  border-bottom: 1px solid var(--line);
+}
+
+.panel__head h2 { margin: 0; font-size: 0.9rem; letter-spacing: 0.3em; }
+
+.panel__close {
+  background: none;
+  border: 1px solid var(--line);
+  color: var(--fg);
+  font: inherit;
+  padding: 0.25rem 0.6rem;
+}
+
+/* Themed thin, for the same reason #zone-modules is (base.css): this is the
+   other box in the app that scrolls, and the default grey track reads as
+   chrome from another application sitting inside the panel. */
+.panel__body { overflow-y: auto; padding: var(--gap);
+               scrollbar-width: thin; scrollbar-color: var(--line) transparent; }
+
+.panel__section { margin-bottom: calc(var(--gap) * 2); }
+
+.panel__title {
+  margin: 0 0 var(--gap);
+  font-size: 0.75rem;
+  letter-spacing: 0.25em;
+  color: var(--accent);
+  border-bottom: 1px solid var(--line);
+  padding-bottom: 0.25rem;
+}
+
+.field {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.4rem 0;
+  font-size: 0.8rem;
+}
+
+/* A range row's third column carries the slider and must flex; on every
+   other row that column is empty and the base template's auto track
+   collapses it to zero, so this is scoped to the branch that needs it
+   rather than widened globally. */
+.field--range { grid-template-columns: 1fr auto minmax(6ch, 1fr) auto; }
+
+.field__label { color: var(--muted); }
+.field__value { color: var(--fg); font-variant-numeric: tabular-nums; min-width: 3.5ch; text-align: right; }
+.field__input { accent-color: var(--accent); background: var(--bg); color: var(--fg);
+                border: 1px solid var(--line); font: inherit; }
+.field__clear { background: none; border: 1px solid var(--line); color: var(--muted); font: inherit;
+                padding: .15rem .5rem; font-size: .7rem; white-space: nowrap; }
+
+.editor { list-style: none; margin: 0; padding: 0; }
+
+.editor__row { display: block; margin-bottom: .55rem; }
+
+.editor__head { display: grid; grid-template-columns: 4ch 1fr auto auto auto; gap: .3rem; margin-bottom: .25rem; }
+
+.editor__target { width: 100%; box-sizing: border-box; }
+
+.editor__row input {
+  min-width: 0;
+  background: var(--bg);
+  color: var(--fg);
+  border: 1px solid var(--line);
+  font: 0.75rem var(--font-mono);
+  padding: 0.3rem;
+}
+
+.editor__row button, .editor__add {
+  background: none;
+  border: 1px solid var(--line);
+  color: var(--fg);
+  font: inherit;
+  padding: 0.3rem 0.5rem;
+}
+
+.editor__add { width: 100%; box-sizing: border-box; margin-top: 0.5rem; }
+
+.system__row { display: flex; gap: 0.4rem; margin-bottom: 0.5rem; }
+
+.system__row button {
+  flex: 1;
+  background: none;
+  border: 1px solid var(--line);
+  color: var(--fg);
+  font: 0.75rem var(--font-mono);
+  padding: 0.5rem;
+}
+
+.system__paste {
+  width: 100%;
+  box-sizing: border-box;
+  margin-bottom: 0.5rem;
+  background: var(--bg);
+  color: var(--fg);
+  border: 1px solid var(--line);
+  font: 0.7rem var(--font-mono);
+  padding: 0.4rem;
+}
+
+/* Small and quiet: it is a diagnostic, not a feature. Tabular figures so a
+   version number does not shift width as it changes. */
+.system__build { margin: 0 0 var(--gap); font-size: 0.7rem; color: var(--muted); font-variant-numeric: tabular-nums; }
+.system__build b { color: var(--fg); font-weight: inherit; }
+
+.system__status { margin: 0; font-size: 0.7rem; color: var(--muted); }
+.system__status[data-ok="false"] { color: var(--accent); }
+
+/* A standing condition, not a transient event: boxed and tinted so it
+   reads as a persistent state rather than a message that will pass. */
+.system__warning {
+  margin: 0 0 0.5rem;
+  padding: 0.5rem;
+  font-size: 0.7rem;
+  color: var(--accent);
+  border: 1px solid var(--accent);
+  background: color-mix(in srgb, var(--accent) 15%, transparent);
+}

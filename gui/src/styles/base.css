@@ -1,0 +1,521 @@
+/* ambient.scope: main.js's setupAmbient moves the #ambient element itself
+   between two fixed homes — a child of .band--right for column scope, a
+   child of <body> (its original spot, before .band--top) for fullscreen —
+   the same technique nexus.js uses to confine a canvas to an avatar host,
+   rather than sharing .band--right's named grid area (layout.css) from
+   outside it. Sharing the area was tried first and reverted: a grid item's
+   automatic minimum size is its content size, and a <canvas>'s content box
+   is engine.js's own pixel buffer, so growing that buffer grew the shared
+   1fr row (grid-template-rows), which grew .band--right's measured
+   clientHeight — the very thing column scope's `win` substitute reads to
+   size the *next* buffer. That fed back into a multi-million-pixel canvas
+   within one resize tick, and — since the row is shared with .band--left
+   too — dragged the cipher avatar's own canvas into the same runaway.
+   position: absolute/fixed sidesteps this categorically rather than merely
+   bounding it (min-height: 0 on #ambient was not enough on its own,
+   confirmed live): an out-of-flow element never contributes to its
+   container's content-based sizing at all, regardless of any min-height.
+   Confining it by parentage — a plain descendant combinator per scope,
+   selecting on where the element actually lives — needs no extra class on
+   #deck to stay in sync with. */
+.band--right > #ambient {
+  position: absolute;
+  inset: 0;
+}
+
+body > #ambient {
+  position: fixed;
+  inset: 0;
+}
+
+#ambient {
+  width: 100%;
+  height: 100%;
+  z-index: 0;
+  /* The buffer is smaller than the screen on purpose; let the GPU stretch it. */
+  image-rendering: auto;
+  /* Same defensive reasoning as #overlay's own pointer-events: none
+     (effects.css): a purely decorative canvas, painted behind everything
+     else (z-index: 0), must never be the element a tap's hit-test lands on.
+     Its stacking order alone happens to keep it clear of the tiles and the
+     settings button today, but that depends on #zone-modules's own box
+     always covering whatever area #ambient occupies — not a guarantee this
+     rule should have to lean on. */
+  pointer-events: none;
+}
+
+/* flex: 1 + min-height: 0 + the overflow below is what used to sit on
+   .band--right itself (layout.css's own comment on that rule explains why it
+   moved): #ambient, in column scope, is an absolutely positioned sibling of
+   this element, anchored to .band--right's own padding box. That box must
+   stay put for #ambient to stay put, so the scrolling this band's unbounded
+   content needs has to live one level in, on the one child that is actually
+   in normal flow. */
+#zone-modules {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  gap: calc(var(--gap) * 2);
+  padding: calc(var(--gap) * 2) var(--gap);
+  box-sizing: border-box;
+  overflow-x: hidden;
+  overflow-y: auto;
+  /* The one scrolling box in the deck, so the one that can show a scrollbar.
+     Android Chrome overlays its own and this changes nothing there, but any
+     desktop-class engine draws a classic grey track down the band's edge,
+     inside the frame and in a colour no theme owns. Themed and thin rather
+     than hidden: a scroll indicator that can never appear is how a shortcut
+     list quietly loses its last row. */
+  scrollbar-width: thin;
+  scrollbar-color: var(--line) transparent;
+}
+
+/* Sits beside the settings button and borrows its whole box, so the pair
+   reads as one control cluster rather than two unrelated squares. The offset
+   is the button's own width plus a gap — stated in the same units, so the two
+   cannot drift apart if either is resized.
+
+   [hidden] needs saying out loud: `position: fixed` sets display to block and
+   would override the attribute's own display: none, leaving a button visible
+   that the code believes it has hidden. */
+#go-fullscreen[hidden] { display: none; }
+
+#go-fullscreen { right: calc(var(--gap) * 2 + 2.75rem); }
+
+#go-fullscreen,
+#open-settings {
+  position: fixed;
+  z-index: 3;
+  bottom: var(--gap);
+  width: 2.75rem;
+  height: 2.75rem;
+  font: 1.25rem/1 var(--font-mono);
+  color: var(--fg);
+  /* Opaque, not the 70% wash it used to carry: the footer ribbon now runs the
+     full width of the right column and passes under this button, and a
+     translucent panel let the slanted bars show through the icon. A control
+     laid over the HUD has to sit on top of it, not blend into it. */
+  background: var(--bg);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+}
+
+#open-settings { right: var(--gap); }
+
+/* "Taille de l'horloge" was wired into main.js (which sets this attribute)
+   and into the schema and the panel, but no rule ever read it back — the
+   setting changed nothing before this variable existed. --clock-scale
+   multiplies both the time's and the date's font-size below rather than
+   replacing either, so the setting varies the clock line as a whole,
+   proportionally, instead of competing with its base size. */
+body[data-clock-size="small"]  { --clock-scale: 0.7; }
+body[data-clock-size="medium"] { --clock-scale: 0.85; }
+body[data-clock-size="large"]  { --clock-scale: 1; }
+
+/* The clock no longer has a placement setting — it always lives in the
+   footer — and is no longer a composed display element: hour and date sit
+   side by side on one line, sized like any other status readout. module--
+   clock lays the two out as a row; .clock__time is a plain 4.4vmin (the
+   third step down from the original 18vmin block-with-date-beneath
+   treatment, by way of 6vmin), with .clock__date at 2.6vmin — a shade under
+   60% of the time's size, so it reads as the secondary figure on the same
+   line. Both are multiplied by --clock-scale above, so the "Taille de
+   l'horloge" setting still moves the pair as a whole and its smallest step
+   remains the deck's default.
+   vmin, not vw: the footer spans the full width of a landscape-only
+   deck, so width was never the scarce dimension — height is, and vmin is
+   the one that follows it, on any screen, not calibrated to the reference
+   device.
+
+   No clamp: a clamp(rem, vmin, rem) only ever does something on the
+   viewport sizes where the vmin term falls outside the rem floor/ceiling,
+   and for every such rule in this codebase that range sits well outside
+   any real landscape phone — this pair's own former bounds (1rem/4rem and
+   0.6rem/2rem) only bit below 267px or above 1066px of min(width,height).
+   Within that range the bounds were dead weight; past it, the ceiling is
+   exactly what would stop the clock from following a screen taller than
+   this one. vmin alone follows the device without a number pinned to
+   today's reference hardware. */
+.module--clock {
+  display: flex;
+  align-items: baseline;
+  /* vmin, not em: this gap sits on the flex container, whose own font-size is
+     the body's, so an em here measured the root text rather than the clock it
+     separates — it stayed ~10px however large or small the hour rendered.
+     vmin ties the space to the same dimension both figures are sized from, so
+     the pair keeps its spacing on any screen. */
+  gap: 3.2vmin;
+}
+
+.clock__time {
+  font-size: calc(4.4vmin * var(--clock-scale, 1));
+  /* 700 to match .logo (logo.css): shrinking the hour from an 18vmin block
+     to a 6vmin line left it at the body's regular weight, thinner on screen
+     than the journal running beside it, which is backwards for the footer's
+     primary figure. Weight is what a display figure keeps when it gives up
+     size — the reference photo's own readouts are heavy at small sizes. */
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  line-height: 1;
+  color: var(--ink);
+}
+
+.clock__date {
+  color: var(--ink-muted);
+  /* The same 0.58rem floor .status__lines and .cipher__log use, for the same
+     reason: at the smallest clock setting on a 412px-tall deck the vmin term
+     alone came out at 7.5px, below anything this interface asks to be read.
+     The floor only engages at that end — every larger deck or setting is on
+     the vmin term and still follows the screen. */
+  font-size: max(0.58rem, calc(2.8vmin * var(--clock-scale, 1)));
+  letter-spacing: 0.15em;
+}
+
+/* The module is a column that fills the band, and the grid takes whatever the
+   prompt below it does not. This is what gives shortcuts.js's bestFit a real
+   height to fit squares into: without a definite box the grid would be as
+   tall as its own rows, which is the arrangement that used to overflow. */
+.module--shortcuts { display: flex; flex-direction: column; gap: var(--gap); flex: 1; min-height: 0; }
+
+/* Explicit square tracks in pixels, both written by shortcuts.js from one
+   measurement of this element. The previous rule sized tracks from the width
+   alone (auto-fit over minmax) and left the tiles square via aspect-ratio, so
+   the number of rows — and with it the grid's height — was whatever the width
+   happened to imply. Past a handful of shortcuts that exceeded the band and
+   the column scrolled, which is a layout deciding its own height rather than
+   fitting the one it was given.
+   CSS cannot make this choice: picking a column count means comparing, for
+   every candidate, the tile size it would yield against both the width and
+   the height, and keeping the largest. That is arithmetic, and it lives in
+   bestFit.
+   The values below are fallbacks, in effect only between first paint and the
+   first measurement: two columns of --tile-min, the smallest honest thing to
+   show. justify/align-content centre the block so a grid that does not divide
+   evenly — five tiles in three columns — sits in the middle of the band
+   rather than hugging its top left corner. */
+.shortcuts__grid {
+  /* Kept in step with shortcuts.js's TILE_MIN_REM, which owns this number at
+     runtime — see its comment for why it is the content minimum rather than
+     the touch target. This declaration is only the pre-measurement fallback
+     below. */
+  --tile-min: 3.5rem;
+  flex: 1;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: repeat(var(--grid-cols, 2), var(--tile-size, var(--tile-min)));
+  grid-auto-rows: var(--tile-size, var(--tile-min));
+  justify-content: center;
+  align-content: center;
+  gap: var(--gap);
+}
+
+/* The one case bestFit could not satisfy: so many shortcuts that fitting them
+   all would put the tiles under the touch target. It reports that rather than
+   shrinking them, and only then does the grid scroll — a tile too small to hit
+   is worse than a scrollbar. align-content returns to start, since centring
+   content taller than its box hides the first row above the scroll origin. */
+.shortcuts__grid[data-overflowing="true"] {
+  align-content: start;
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: var(--line) transparent;
+}
+
+.shortcuts__empty {
+  color: var(--muted);
+  text-align: center;
+}
+
+/* container-type: inline-size makes .tile's own width queryable by its
+   children via cqw, below. Without this, aspect-ratio: 1 is only a
+   preference: icon/label sizes were fixed rem values, so a tile's content
+   needed the same absolute height regardless of how narrow the grid track
+   made it, and once a track got narrow enough (columns: 4, ~51px at the
+   900×412 reference device) that fixed content height exceeded the
+   track's width, aspect-ratio yielded to it — a 50.9×64.6px rectangle
+   measured live, not a square, among the 71.9×71.9 squares columns: 3
+   produces. Lowering --tile-min further to patch that would only shrink
+   the width the square is asked to hold at, not fix why it breaks; sizing
+   the content itself off the tile's own width, so it shrinks with the
+   track instead of staying fixed, is the same reasoning that made
+   auto-fit the answer over a better fixed number for the grid itself.
+
+   That alone was not the whole fix. .tile__label carried no declared
+   line-height, so its contribution to the required content height rode
+   on whatever the UA/font default happened to be — undocumented, and not
+   the same number on every engine or system font. A model built on a
+   solved-for default reproduced the pre-fix rectangle's own numbers
+   exactly, then predicted the square would still fail by about 1.4px at
+   columns: 4's true share of the reference device's band width (the
+   share once a scrollbar's reservation is accounted for, not the wider
+   figure this desktop browser reports when no scrollbar happens to be
+   showing — the narrower one is what any real column count must hold
+   up under). Declaring line-height: 1 on .tile__label, matching
+   .tile__icon's own, makes the required height a fixed function of the
+   tile's width instead of the environment: recomputed and measured live
+   afterward, the same cell holds a genuine ~2.1px margin, not a
+   fraction, and every column count 2–4 this schema offers holds a
+   comparable or larger one at 640×360, 900×412 and 1280×600 alike. The
+   square is not guaranteed at literally any width a future column value
+   might produce — it is guaranteed across the range this schema is
+   capable of asking for today, which is what was actually checked. */
+.tile {
+  container-type: inline-size;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35rem;
+  aspect-ratio: 1;
+  padding: 0.5rem;
+  color: var(--accent);
+  text-decoration: none;
+  background: color-mix(in srgb, var(--bg) 60%, transparent);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  -webkit-tap-highlight-color: transparent;
+  -webkit-touch-callout: none;
+  user-select: none;
+  /* A backstop, not the mechanism: shortcuts.js's TILE_MIN_REM is sized so
+     the contents fit, and this only decides what happens if that arithmetic
+     is ever wrong. Without it a tile's overflow reaches the grid, and the
+     grid's reaches the band — one tile a few pixels too small for its label
+     put a scrollbar down the whole column. A cropped label is the better
+     failure. */
+  overflow: hidden;
+}
+
+.tile:active { border-color: var(--accent); }
+
+/* cqw resolves against .tile's own content box (border-box width minus its
+   padding and border), not the track width the grid gives it — measured,
+   not assumed, after an earlier draft of this rule got it backwards.
+   Coefficients are calibrated against that content box to reproduce
+   today's fixed rem values (28px icon, 11.2px label) at columns: 3's
+   reference-device width, so the common, previously-square case is
+   visually unchanged; away from it they scale with the tile instead of
+   staying fixed. clamp()'s floor is a legibility bound a label is never
+   asked to shrink past even in a track narrower than the reference
+   device offers; the ceiling keeps a wide, few-columns tile from
+   growing its caption past what an icon label should be. The rem
+   declaration comes first as the fallback: an engine without container
+   query support treats the clamp() line as invalid (an unsupported unit
+   inside it) and keeps the rem value, rather than falling through to
+   nothing. line-height: 1 on both — see the block above .tile — makes
+   each one's contribution to the tile's required content height a fixed
+   function of its own font-size, not of a UA/font default nobody wrote
+   down. */
+.tile__icon {
+  font-size: 1.75rem;
+  font-size: clamp(1.1rem, 52cqw, 2.5rem);
+  line-height: 1;
+}
+
+.tile__label {
+  font-size: 0.7rem;
+  font-size: clamp(0.6rem, 20.8cqw, 1rem);
+  line-height: 1;
+  color: var(--fg);
+  text-align: center;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 100%;
+}
+
+/* The cipher module is the left band's only occupant, so it is the one that
+   must fill the band's full, bounded height (see layout.css's #zone-modules-left,
+   stretched to match) rather than merely sitting inside it. flex: 1 is not
+   redundant with the parent's own stretch: measured on the reference device,
+   a lone flex-grow: 0 child of a column flex container still happened to hug
+   almost the full available height, because .avatar__svg/.avatar__canvas
+   (avatars.css) have no explicit size and so fall back to the UA's default
+   300x150 replaced-element intrinsic size, which is large enough at 412px of
+   viewport height to read as "full". Re-tested at a taller landscape size
+   (1400x1000) with flex-grow left at its default, that coincidence broke: a
+   465px gap opened below the module while it sat frozen at its hugged
+   content height. flex: 1 here (with min-height: 0 so it can still shrink
+   below that same hugged size on a short viewport) is what makes the fill
+   hold at every landscape height instead of only the one it was eyeballed
+   against — the exact failure mode this spec's "no dimension calibrated to
+   the reference device" rule warns about. */
+.module--cipher { display: flex; flex-direction: column; gap: var(--gap); flex: 1; min-height: 0; }
+
+/* position: relative turns this into the containing block for the two
+   ornament layers below. They are pseudo-elements, not markup, so cipher.js
+   keeps writing the same two children it always has and none of this is
+   reachable by anything but the stylesheet — decoration should not become a
+   thing another module could accidentally query. Both carry
+   pointer-events: none for the reason #overlay's own comment gives: a purely
+   decorative layer must never be what a tap lands on. */
+.cipher__avatar { position: relative; flex: 1; min-height: 120px; display: grid; place-items: center; }
+
+/* GAUGE — the reference photo's vertical ruler down the left of the face.
+   Three gradient layers on one box, painted front to back as listed: coarse
+   full-width ticks in --accent, a finer half-width comb in --line behind
+   them, and the rail they hang off. Every pitch is vmin so the comb keeps
+   its density on any screen rather than crowding or thinning out with the
+   band's height.
+
+   This exists because the left band is roughly twice as wide as it is tall
+   while every avatar draws on a square, so the avatar can only ever fill the
+   height — leaving two tall empty margins beside it, which is the emptiness
+   the deck was flagged for. The reference photo fills exactly these two
+   margins, and with exactly this: instrumentation flanking the portrait. */
+.cipher__avatar::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 12%;
+  bottom: 12%;
+  width: 2.6vmin;
+  pointer-events: none;
+  background-repeat: no-repeat, repeat-y, no-repeat, no-repeat;
+  background-image:
+    linear-gradient(var(--accent), var(--accent)),
+    repeating-linear-gradient(to bottom, var(--accent) 0 var(--hud-line), transparent var(--hud-line) 4vmin),
+    repeating-linear-gradient(to bottom, var(--line) 0 var(--hud-line), transparent var(--hud-line) 1.1vmin),
+    linear-gradient(var(--accent), var(--accent));
+  background-size: 100% 1.2vmin, 100% 100%, 55% 100%, var(--hud-line) 100%;
+  background-position: left 38%, left top, left top, left top;
+}
+
+/* RETICLE — four corner marks on a box wider than the avatar it frames, so
+   it reaches into those same side margins instead of hugging the drawing.
+   Corner marks rather than a full border, the same "mark, don't trace"
+   choice .band--left's brackets and .band__teeth already make: a closed
+   rectangle around a portrait reads as a picture frame, four Ls read as a
+   target. Insets are percentages, not lengths — the box has to keep its
+   proportions against the band, which changes size with the screen. */
+.cipher__avatar::after {
+  content: '';
+  position: absolute;
+  inset: 8% 4%;
+  pointer-events: none;
+  background-repeat: no-repeat;
+  background-image:
+    linear-gradient(var(--accent), var(--accent)), linear-gradient(var(--accent), var(--accent)),
+    linear-gradient(var(--accent), var(--accent)), linear-gradient(var(--accent), var(--accent)),
+    linear-gradient(var(--accent), var(--accent)), linear-gradient(var(--accent), var(--accent)),
+    linear-gradient(var(--accent), var(--accent)), linear-gradient(var(--accent), var(--accent));
+  background-position:
+    top left, top left, top right, top right,
+    bottom left, bottom left, bottom right, bottom right;
+  background-size:
+    var(--bracket-len) var(--hud-line), var(--hud-line) var(--bracket-len),
+    var(--bracket-len) var(--hud-line), var(--hud-line) var(--bracket-len),
+    var(--bracket-len) var(--hud-line), var(--hud-line) var(--bracket-len),
+    var(--bracket-len) var(--hud-line), var(--hud-line) var(--bracket-len);
+}
+/* Brighter than --muted, dimmer than --fg, and so neither token: several
+   lines of ~10px running text need more than the deck's subordinate tier
+   gives them (the reference photo's own boot log renders crisp), while
+   staying a shade under full --fg is what leaves the status column's lines
+   (var(--fg) straight) reading as the brighter of the two. color-mix off
+   --fg rather than a literal keeps that true in matrix, nightcity and
+   arasaka alike. */
+/* The bracket is a `[`: a heavy left rule plus a short arm at each end,
+   after the reference photo's own bracketed log panel. Two background
+   layers for the arms and a border for the spine, rather than three
+   absolutely positioned boxes — the arms have to sit at the text block's
+   real top and bottom, whatever number of lines the journal happens to
+   render, and background-position does that by itself where a fixed height
+   would have to be guessed. */
+.cipher__log {
+  position: relative;
+  padding: 0.35em 0 0.35em 1em;
+  border-left: calc(var(--hud-line) * 2) solid var(--accent);
+  background-repeat: no-repeat;
+  background-image:
+    linear-gradient(var(--accent), var(--accent)),
+    linear-gradient(var(--accent), var(--accent));
+  background-size: var(--bracket-len) var(--hud-line);
+  background-position: top left, bottom left;
+  margin: 0;
+  /* Was a bare .62rem, which stayed 9.9px whether the deck was 360 or 600
+     tall — the journal shrank into the corner as everything around it grew.
+     max() gives it the same shape as .status__lines: a floor that protects
+     the smallest deck, and vmin above it so it follows a bigger one. */
+  font-size: max(0.58rem, 2vmin);
+  line-height: 1.6;
+  color: color-mix(in srgb, var(--fg) 88%, transparent);
+  white-space: pre-wrap;
+}
+
+/* status.js: the right band's default view. vmin, not a fixed rem, for the
+   same reason .clock__time uses it — this column's width tells us nothing
+   about the height budget it actually has to fit inside. */
+.module--status { display: flex; flex-direction: column; gap: var(--gap); }
+.status__lines {
+  margin: 0;
+  color: var(--fg);
+  /* max(), not clamp(): the floor is a real legibility guard (2.4vmin is
+     8.6px on a 640x360 deck), but the 0.85rem ceiling it used to carry bit
+     at 1280x600 and every size above — capping the column at the reference
+     hardware's text size instead of letting it follow a bigger screen. A
+     floor adapts upward without limit; a ceiling is the thing that stops
+     adapting. Same change on .view-prompt below. */
+  font-size: max(0.58rem, 2.4vmin);
+  line-height: 1.7;
+  white-space: pre-wrap;
+}
+
+/* The closing verdict, separated from the readings above it by a rule, as in
+   the reference photo. The rule is this element's own border-top rather than
+   an <hr> of its own: it belongs to the block it introduces, and a separate
+   node would be one more thing for .module--status's flex gap to space.
+   Sized with .status__lines, since the two are read as one column. */
+.status__verdict {
+  /* Space on both sides of the rule, not only under it: margin-top pushes the
+     rule clear of the last reading, padding-top holds the sentence off the
+     rule, and padding-bottom keeps it from touching the prompt below. The
+     three are separate declarations because they separate three different
+     pairs of things, and .module--status's flex gap only ever addresses the
+     first of them. */
+  margin: 0.9em 0 0;
+  padding: 1.3em 0 0.7em;
+  border-top: 1px solid var(--line);
+  /* Paler than the readings above it, as in the reference photo, where the
+     closing line is the brightest text on the screen and the frame around it
+     is not. It is the deck's one summary of itself; --fg would have left it
+     weighing exactly as much as any single reading. */
+  color: var(--bright);
+  font-size: max(0.58rem, 2.4vmin);
+  line-height: 1.7;
+}
+
+/* Shared by status.js and shortcuts.js — the right band's only two views
+   today. "The right column is a screen, not a stack": each view's own
+   prompt is the sole element that switches to another one, so it is styled
+   apart from the rest of that view's (inert, for this purpose) body.
+   position: sticky rather than a separate element outside the mounted
+   module: the right band's own scrolling (#zone-modules, just above — this
+   view's own mount host and the element that actually scrolls, not
+   layout.css's .band--right) must keep working for a tall shortcuts grid,
+   and sticky is what keeps the prompt on screen at the bottom of that scroll
+   instead of requiring the reader to scroll an unknown distance past however
+   many tiles exist. */
+.view-prompt {
+  position: sticky;
+  bottom: 0;
+  z-index: 1;
+  display: block;
+  width: 100%;
+  box-sizing: border-box;
+  margin-top: auto;
+  padding: 0.6em;
+  font: inherit;
+  font-size: max(0.6rem, 2.6vmin);
+  letter-spacing: 0.08em;
+  text-align: center;
+  color: var(--accent);
+  background: color-mix(in srgb, var(--bg) 85%, transparent);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  cursor: pointer;
+}
+
+.view-prompt:active { border-color: var(--accent); }

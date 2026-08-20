@@ -1,0 +1,75 @@
+/* Values are injected by applyTheme(); these are the boot palette, used for
+   the instant between first paint and the first store read. */
+:root {
+  --bg: #000000;
+  --fg: #00ff41;
+  --accent: #00ff41;
+  --dim: #0a3d16;
+  --glow: #00ff41;
+
+  /* Two readability tiers derived from whichever palette applyTheme() has
+     injected, rather than two more literals for theme.js to inject: a var()
+     inside a custom property resolves against the same element's computed
+     value, and applyTheme() sets --fg and --accent on that very element, so
+     these follow a theme switch on their own.
+
+     They exist because --dim is a near-black in all three palettes
+     (#0a3d16, #1b1d2b, #33060f). Against --bg that is right for a field's
+     inner edge and wrong for everything else: as text it is unreadable, and
+     as a rule it is invisible at the exact places the reference photo draws
+     its brightest structure. So --muted carries anything meant to be read
+     but subordinate, and --line carries any rule meant to read as
+     structure. No rule reads --dim any more; it stays declared because it
+     is a key of the palette theme.js injects, and this block is that
+     palette's boot copy. */
+  --muted: color-mix(in srgb, var(--fg) 72%, var(--bg));
+  --line: color-mix(in srgb, var(--accent) 55%, var(--bg));
+
+  /* A third tier, above --fg rather than below it, for the one or two lines
+     that have to carry more weight than the readings around them. White is a
+     literal here where --muted and --line mix toward --bg, because "paler
+     than the palette" has no answer inside the palette — every entry in it
+     is the ink, and there is nothing lighter to reach for. It keeps the
+     theme's hue, just far enough desaturated to read as near-white in
+     matrix, pale yellow in nightcity, pink in arasaka. */
+  --bright: color-mix(in srgb, var(--fg) 35%, #ffffff);
+
+  --font-mono: ui-monospace, "DejaVu Sans Mono", "Roboto Mono", monospace;
+  --gap: 0.75rem;
+  --radius: 2px;
+}
+
+/* Ink versus structure. The reference photo draws its content — the wordmark,
+   the codes, the readouts, the portrait — in white, and reserves the palette's
+   own colour for the frame, the rules and the brackets around them. These two
+   tokens are that split, made switchable.
+
+   White is a literal, as it is for --bright: "not the palette's colour" has no
+   answer inside the palette. The theme setting points them back at --fg, which
+   is what the deck looked like before.
+
+   Three tokens and not one because the wordmark and the portrait are each set
+   apart from the rest: they are the two elements people want to differ, and
+   from each other as much as from the deck. */
+body {
+  --ink: #ffffff;
+  --logo-ink: #ffffff;
+  --avatar-ink: #ffffff;
+  /* The subordinate tier of whichever ink is in force, for the date beside the
+     hour. Mixing toward --bg rather than lowering opacity keeps it opaque over
+     the rain. */
+  --ink-muted: color-mix(in srgb, var(--ink) 72%, var(--bg));
+}
+
+body[data-ink="theme"] { --ink: var(--fg); }
+body[data-logo-ink="theme"] { --logo-ink: var(--fg); }
+body[data-avatar-ink="theme"] { --avatar-ink: var(--fg); }
+
+html, body {
+  margin: 0;
+  height: 100%;
+  background: var(--bg);
+  color: var(--fg);
+  font-family: var(--font-mono);
+  overscroll-behavior: none;
+}

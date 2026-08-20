@@ -1,0 +1,311 @@
+/* Landscape only: the deck is used lying down, and there is no portrait
+   layout to fall back to. height (not min-height) gives the grid a hard
+   budget to divide — the middle row's 1fr is only meaningful if the total
+   it is a fraction *of* is fixed, rather than a floor the page can grow
+   past (see the bands' own comment below for the other half of this).
+
+   svh, not dvh: Android Chrome hides its toolbar on scroll, and dvh
+   recomputes on every hide/show, resizing #deck and shifting the footer
+   each time the shortcut list is scrolled — in any non-installed context,
+   including a verification pass. svh is fixed for the page's lifetime.
+   Installed standalone has no toolbar to hide, so svh already equals dvh
+   there and the switch costs nothing. 100vh stays as the fallback for
+   engines without svh support. */
+#deck {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  height: 100vh;
+  height: 100svh;
+  gap: 1px;
+  padding: var(--gap);
+  box-sizing: border-box;
+  grid-template-areas:
+    "top  top"
+    "left right"
+    "foot foot";
+  /* Named, because .band--foot below reuses it: the footer spans both
+     columns as one area, but its ribbon has to line up with the right
+     column's track exactly. Restating the ratio there would be a second
+     place to change it, and the kind of second place that goes unnoticed —
+     nothing breaks, the two just stop agreeing. */
+  --deck-columns: minmax(0, 2fr) minmax(0, 1fr);
+  grid-template-columns: var(--deck-columns);
+  grid-template-rows: auto 1fr auto;
+  /* HUD ornament sizing, shared by #deck::before below and the band corner
+     brackets further down. vmin, no clamp, same reasoning as .clock__time:
+     these are decorative, so nothing here is a legibility or touch-target
+     floor that would need one (contrast .shortcuts__grid's --tile-min,
+     which is). --hud-cut sits comfortably inside --gap at every tested
+     size (640x360 through 1280x600) so the chamfers stay in the padding
+     gutter the bands never paint into, not over their content. */
+  --hud-line: 0.3vmin;
+  --hud-cut: 2.2vmin;
+  --bracket-len: 1.8vmin;
+  --bracket-gap: 0.35vmin;
+}
+
+/* Outer HUD frame — the reference photo's bright bordered panel, corners
+   cut at an angle rather than a plain rectangle. Not clip-path: clipping a
+   ring (drawn via mask, border-box minus content-box) to a chamfered
+   octagon only keeps ring pixels that already fall within --hud-line of an
+   edge, and --hud-cut is chosen well past that width for a chamfer actually
+   worth seeing — so the clipped diagonal falls almost entirely in the
+   ring's hollow middle, where there was never any colour to keep. The
+   result is an open notch at each corner, not a joining line (checked by
+   hand on paper before it was checked on screen).
+   Built from gradients instead: four straight-edge layers (a hard-stopped
+   linear-gradient, transparent past --hud-cut from each end, the same
+   two-stops-per-colour technique #overlay's scanlines already use below)
+   plus four corner layers on a --hud-cut square each. A `to <corner>`
+   gradient's line always runs exactly corner-to-corner of its own box
+   regardless of aspect ratio (unlike a numeric angle, which does not) —
+   squaring the corner boxes is what makes that line the true diagonal
+   rather than an approximation, so each corner gradient's 50% split lands
+   exactly on the point where the two adjacent straight edges stop,
+   completing the rule as one continuous stroke.
+   Absolutely positioned and never sized by content, so it can never be the
+   thing that pushes #deck past its 100svh budget; pointer-events: none for
+   the same reason #overlay and #ambient carry it — a decorative layer must
+   never be what a tap's hit-test lands on. */
+#deck::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  pointer-events: none;
+  background-repeat: no-repeat;
+  background-image:
+    linear-gradient(to right, transparent 0, transparent var(--hud-cut), var(--accent) var(--hud-cut), var(--accent) calc(100% - var(--hud-cut)), transparent calc(100% - var(--hud-cut))),
+    linear-gradient(to right, transparent 0, transparent var(--hud-cut), var(--accent) var(--hud-cut), var(--accent) calc(100% - var(--hud-cut)), transparent calc(100% - var(--hud-cut))),
+    linear-gradient(to bottom, transparent 0, transparent var(--hud-cut), var(--accent) var(--hud-cut), var(--accent) calc(100% - var(--hud-cut)), transparent calc(100% - var(--hud-cut))),
+    linear-gradient(to bottom, transparent 0, transparent var(--hud-cut), var(--accent) var(--hud-cut), var(--accent) calc(100% - var(--hud-cut)), transparent calc(100% - var(--hud-cut))),
+    linear-gradient(to bottom right, transparent 0, transparent calc(50% - var(--hud-line) / 2), var(--accent) calc(50% - var(--hud-line) / 2), var(--accent) calc(50% + var(--hud-line) / 2), transparent calc(50% + var(--hud-line) / 2)),
+    linear-gradient(to bottom left, transparent 0, transparent calc(50% - var(--hud-line) / 2), var(--accent) calc(50% - var(--hud-line) / 2), var(--accent) calc(50% + var(--hud-line) / 2), transparent calc(50% + var(--hud-line) / 2)),
+    linear-gradient(to bottom left, transparent 0, transparent calc(50% - var(--hud-line) / 2), var(--accent) calc(50% - var(--hud-line) / 2), var(--accent) calc(50% + var(--hud-line) / 2), transparent calc(50% + var(--hud-line) / 2)),
+    linear-gradient(to bottom right, transparent 0, transparent calc(50% - var(--hud-line) / 2), var(--accent) calc(50% - var(--hud-line) / 2), var(--accent) calc(50% + var(--hud-line) / 2), transparent calc(50% + var(--hud-line) / 2));
+  background-position: top left, bottom left, top left, top right, top left, top right, bottom left, bottom right;
+  background-size:
+    100% var(--hud-line), 100% var(--hud-line),
+    var(--hud-line) 100%, var(--hud-line) 100%,
+    var(--hud-cut) var(--hud-cut), var(--hud-cut) var(--hud-cut),
+    var(--hud-cut) var(--hud-cut), var(--hud-cut) var(--hud-cut);
+}
+
+.band { position: relative; min-width: 0; }
+
+/* Corner brackets — short right-angle marks at each corner of the avatar
+   and status/shortcuts bands, nesting inside the outer frame the way the
+   reference photo nests bracketed panels inside its own border. Two bars
+   per corner (one along each edge, anchored to meet exactly at the corner)
+   rather than a border or an outline, so each mark stays a short accent
+   instead of tracing the whole band — the same "mark, don't trace"
+   reasoning as .band__teeth below, applied to a corner instead of an edge.
+   Reuses --hud-line so every accent-coloured stroke in the deck (outer
+   frame, brackets, teeth) reads as the same weight of "rule". */
+.band--left::before,
+.band--right::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  pointer-events: none;
+  background-repeat: no-repeat;
+  background-image:
+    linear-gradient(var(--accent), var(--accent)), linear-gradient(var(--accent), var(--accent)),
+    linear-gradient(var(--accent), var(--accent)), linear-gradient(var(--accent), var(--accent)),
+    linear-gradient(var(--accent), var(--accent)), linear-gradient(var(--accent), var(--accent)),
+    linear-gradient(var(--accent), var(--accent)), linear-gradient(var(--accent), var(--accent));
+  background-position:
+    top var(--bracket-gap) left var(--bracket-gap), top var(--bracket-gap) left var(--bracket-gap),
+    top var(--bracket-gap) right var(--bracket-gap), top var(--bracket-gap) right var(--bracket-gap),
+    bottom var(--bracket-gap) left var(--bracket-gap), bottom var(--bracket-gap) left var(--bracket-gap),
+    bottom var(--bracket-gap) right var(--bracket-gap), bottom var(--bracket-gap) right var(--bracket-gap);
+  background-size:
+    var(--bracket-len) var(--hud-line), var(--hud-line) var(--bracket-len),
+    var(--bracket-len) var(--hud-line), var(--hud-line) var(--bracket-len),
+    var(--bracket-len) var(--hud-line), var(--hud-line) var(--bracket-len),
+    var(--bracket-len) var(--hud-line), var(--hud-line) var(--bracket-len);
+}
+.band--top   { grid-area: top;   display: flex; align-items: center; gap: var(--gap);
+               border-bottom: 1px solid var(--line); padding-bottom: .4rem; }
+/* left and right share the grid's middle (1fr) row. What actually keeps
+   that row from growing past #deck's real height is #deck's own `height`
+   above: a row can only be "the remaining space" once the space it is
+   remaining *of* is a definite number, which min-height does not give it.
+   The min-height: 0 below is not what does this — it is redundant, not
+   load-bearing. Both bands already set overflow to something other than
+   visible (clip here, scroll on the right), for their own reason: content
+   that outgrows its band must not force the band bigger. That same
+   overflow already zeroes a grid item's *automatic* minimum size (which is
+   content-based, hence potentially large, only while overflow is visible;
+   once it isn't, the automatic minimum is 0 regardless of what min-height
+   says). Confirmed by ablation: reverting #deck to min-height alone
+   reproduces the off-screen footer even with min-height: 0 and overflow
+   both still in place here; reverting min-height: 0 to auto here, with
+   #deck's height and the overflow untouched, reproduces no bug at all. */
+.band--left  { grid-area: left;  display: flex; flex-direction: column; gap: var(--gap);
+               padding: var(--gap) var(--gap) var(--gap) 0;
+               min-height: 0; overflow: hidden; }
+/* The right band is the one with unbounded content (shortcuts today, more
+   later): rather than clip it, it scrolls within its own fixed share of the
+   frame, so the top and footer bands never move. The scrolling itself lives
+   on #zone-modules (base.css), not on this band: .band--right holds #ambient
+   too in column scope (main.js's setupAmbient), positioned absolute against
+   this element as its containing block (base.css's #ambient comment). An
+   absolutely positioned descendant still scrolls along with a scrolling
+   containing block's content — inset: 0 anchors it to the padding box, but
+   that box's rendered content, canvas included, moves as one with the rest
+   once the box itself is the one that scrolls. Keeping this band itself
+   static and delegating the scroll to its in-flow child is what lets the
+   rain stay put while the shortcuts grid scrolls under it, rather than
+   scrolling away and leaving bare background behind once the grid overflows. */
+/* border-left thicker, and in full --accent rather than the --line every
+   other band edge uses: the two columns split unevenly (2fr/1fr) and carry
+   very different content, and the reference photo's own panels separate on
+   a rule brighter and heavier than the hairlines around them. */
+.band--right { grid-area: right; display: flex; flex-direction: column; gap: var(--gap);
+               padding: var(--gap) 0 var(--gap) var(--gap);
+               border-left: calc(var(--hud-line) * 2) solid var(--accent);
+               min-height: 0; }
+/* A grid on the deck's own column template, not a flex row: the ribbon is
+   asked to span the right column, and the only way to be sure it does is to
+   put it in that column. Sizing it by hand — a width in vmin, or a fraction
+   restated here — would land near the right edge and drift from it at every
+   other screen size, since the track is a fraction of a viewport the ribbon
+   would know nothing about. column-gap matches #deck's own 1px, so the two
+   tracks below the frame sit under the two above it. */
+.band--foot  { grid-area: foot;  display: grid; grid-template-columns: var(--deck-columns);
+               column-gap: 1px; align-items: center;
+               border-top: 1px solid var(--line); padding-top: .4rem; overflow: hidden;
+               /* The rain used to run straight through the date. */
+               background: color-mix(in srgb, var(--bg) 88%, transparent); }
+
+/* The top strip, after the reference photo: runs of barcode alternating with
+   the code groups across the whole width, not the codes bunched together with
+   one long barcode after them. The alternation is what makes it read as an
+   instrument's header rather than a label with decoration appended, so the
+   segments are real elements in index.html rather than one pseudo-element.
+
+   The bars take the leftover width (flex: 1 on each, so the four share it
+   evenly) and the code groups take exactly what their glyphs need. On a
+   narrow deck the bars are what gives way: flex-basis 0 with min-width: 0
+   lets them shrink to nothing while the codes, which carry the only actual
+   information here, keep their size until there is genuinely no room. */
+.band__codes {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 1.2vmin;
+  min-width: 0;
+  color: var(--ink);
+  font-size: max(0.55rem, 1.7vmin);
+  letter-spacing: .22em;
+  overflow: hidden;
+  white-space: nowrap;
+}
+
+.band__code { flex: 0 1 auto; overflow: hidden; text-overflow: clip; }
+
+/* One period holds three bars of unequal width and unequal spacing. A single
+   repeated bar would read as a comb — which is what the gauge beside the
+   avatar (base.css) wants and is built as; a barcode has to look unplanned,
+   and three uneven bars is the shortest period that stops the eye finding
+   the repeat. Same colour as the code text, as in the photo, where the bars
+   and the glyphs are equally bright and the frame around them is not. */
+.band__bars {
+  flex: 1 1 0;
+  min-width: 0;
+  height: 2.6vmin;
+  background-image: repeating-linear-gradient(
+    to right,
+    var(--ink) 0 0.62vmin,
+    transparent 0.62vmin 1.24vmin,
+    var(--ink) 1.24vmin 2.2vmin,
+    transparent 2.2vmin 2.82vmin,
+    var(--ink) 2.82vmin 3.28vmin,
+    transparent 3.28vmin 4.4vmin
+  );
+}
+
+/* Two kinds of unevenness, both taken from the photo, where no two runs are
+   the same length and none of them starts on the same bar. The flex weights
+   vary the lengths; the offsets slide each run within the shared period, so
+   the strip never resolves into one rhythm repeated four times. */
+.band__bars:nth-of-type(1) { flex-grow: 0.7; }
+.band__bars:nth-of-type(2) { flex-grow: 1.5; background-position: -1vmin 0; }
+.band__bars:nth-of-type(3) { flex-grow: 1.1; background-position: -2.4vmin 0; }
+.band__bars:nth-of-type(4) { flex-grow: 0.9; background-position: -3.3vmin 0; }
+
+/* Hazard ribbon — the reference photo's bottom-right strip. Two rows of
+   slanted bars, not the sawtooth this used to draw: in the photo the marks
+   are parallelograms leaning right, an upper row in the frame's own green
+   and a lower row in the brighter ink, the lower one offset so the two read
+   as one ribbon rather than two stripes.
+
+   repeating-linear-gradient at 110deg gives the lean directly. A gradient's
+   bands run perpendicular to its line, so 90deg would draw upright bars and
+   every degree past that tips them clockwise — 20 degrees off vertical here,
+   measured off the photo. The two rows differ in period as well as colour,
+   which is what stops them lining up into a grid. */
+.band__teeth {
+  /* --tooth is the ribbon's height only; its width is the grid track's, so
+     there is no bar count to pick and none to keep in step with a screen
+     size. It ends under #open-settings (base.css), which is fixed over this
+     corner — the button carries its own background and border and reads as
+     an object placed on the HUD, which is why the ribbon no longer reserves
+     a gap for it. */
+  --tooth: 4.6vmin;
+  height: var(--tooth);
+  background-repeat: repeat-x;
+  /* The coarse lower run is ink, the fine upper one is structure — exactly the
+     photo's pairing, where pale blocks sit under a mid-green run. Only the
+     coarse row follows the ink setting; the fine one is part of the frame and
+     stays with the palette, which is also what keeps the two distinguishable
+     in matrix, where --fg and --accent are the same value. */
+  background-image:
+    repeating-linear-gradient(110deg,
+      var(--ink) 0 1.5vmin, transparent 1.5vmin 4.2vmin),
+    repeating-linear-gradient(110deg,
+      var(--line) 0 0.8vmin, transparent 0.8vmin 2vmin);
+  /* 62% each, so the two rows overlap by a quarter of the ribbon's height
+     rather than sitting apart with a gap between them: in the photo the pale
+     blocks bite into the bottom of the green run, and the pair reads as one
+     ribbon. The lower row runs on a period twice the upper's, so it carries
+     roughly half as many marks and each is the chunkier — the proportion the
+     photo shows, where a fine green run sits over a coarse pale one. */
+  background-size: 100% 62%, 100% 62%;
+  background-position: 1.4vmin bottom, 0 top;
+}
+
+/* The left band's module container, sibling to the right band's #zone-modules.
+   Each band owns exactly one mountModules() target. Kept generic (not named
+   after any one module) so the registry stays the only mounting mechanism —
+   today it hosts only the cipher module, but nothing here is cipher-specific.
+   flex: 1 with min-height: 0 stretches it to fill .band--left's own definite
+   height (the middle grid row is 1fr of #deck's fixed height — see #deck's
+   comment) rather than hugging its content's size, the same reasoning
+   .band--left's own comment gives for why a defined height has to reach all
+   the way down before a flex: 1 child (.cipher__avatar, in base.css) has
+   anything real to grow into. Without it the avatar module would size to its
+   own min-height floor only, leaving the two-thirds-wide band mostly empty
+   above it — the exact symptom this task exists to remove. */
+#zone-modules-left {
+  display: flex;
+  flex-direction: column;
+  gap: var(--gap);
+  flex: 1;
+  min-height: 0;
+}
+
+/* #zone-modules-foot (in index.html) is the footer's module container,
+   sibling in kind to #zone-modules-left and #zone-modules above. Only the
+   clock mounts there — it no longer has a placement setting, so this is
+   its one and only container now — but it stays a generic mounting target
+   rather than a clock-specific one, for the same reason #zone-modules-left
+   does: mountModules() must remain the only mounting mechanism there is.
+   No rule needed here: it is .band--foot's first grid item, so it takes the
+   left track and .band__teeth takes the right one, each by position alone.
+   The clock renders at whatever width its glyphs need inside that track and
+   never moves the ribbon, which is now the track's width rather than its
+   own. */

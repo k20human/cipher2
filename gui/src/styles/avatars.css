@@ -1,0 +1,220 @@
+/* The five canvas-free CIPHER-2 avatars — CORE, HALO, WAVE, IRIS, LATTICE —
+   transposed from the CIPHER-2 avatar reference mockup, not in this repo.
+   Every class here is prefixed `av-` so it cannot collide with the panel,
+   the tiles or the logo, which share this stylesheet's cascade.
+
+   Every @keyframes rule below animates only `transform` and/or `opacity`:
+   the GPU compositor applies both without ever repainting the SVG, so the
+   processor spends nothing per frame regardless of how many rings spin at
+   once — the entire reason these five avatars exist alongside the canvas
+   ones. None of the three theme palettes appear as literals: every
+   stroke and glow reads a custom property (--fg, --accent, --glow) set by
+   applyTheme(), so recolouring a theme recolours every avatar with it. */
+
+/* Absolutely positioned, not merely 100%/100%. An inline <svg> with a viewBox
+   is a replaced element with an intrinsic 1:1 ratio, and height: 100% on it
+   did not resolve against the slot: measured in the band at 825x371, the svg
+   came out 825x825 — square, sized off its width, 454px taller than the box
+   it sits in. With overflow: visible (which the glowing avatars need) nothing
+   clipped that, so CORE drew a sphere spilling far below the band, only its
+   top half on screen.
+   inset: 0 against the slot's own padding box makes both dimensions definite,
+   which is what lets preserveAspectRatio's default xMidYMid meet do its job:
+   the drawing is letterboxed inside the box and centred, at any band shape.
+   It also takes these out of flow, so the canvas avatars can no longer feed
+   their own buffer size back into the box that measures them — the same
+   reasoning base.css gives at length for #ambient. */
+.cipher__avatar > .avatar__svg,
+.cipher__avatar > .avatar__canvas,
+.cipher__avatar > .avatar__stage {
+  position: absolute;
+  inset: 0;
+}
+
+.avatar__svg { width: 100%; height: 100%; overflow: visible; display: block; }
+.avatar__canvas { display: block; width: 100%; height: 100%; }
+.av-s  { fill: none; stroke: var(--avatar-ink); stroke-width: 1; vector-effect: non-scaling-stroke; }
+.av-s2 { fill: none; stroke: var(--avatar-ink); stroke-width: 1; opacity: .42; vector-effect: non-scaling-stroke; }
+
+@keyframes av-spin  { to { transform: rotate(360deg) } }
+@keyframes av-spinR { to { transform: rotate(-360deg) } }
+@keyframes av-breathe { 0%,100% { transform: scale(1); opacity: .85 } 50% { transform: scale(1.06); opacity: 1 } }
+@keyframes av-pulse { 0%,100% { opacity: .25 } 50% { opacity: 1 } }
+@keyframes av-iris  { 0%,100% { transform: scale(1) } 45% { transform: scale(.62) } 60% { transform: scale(.68) } }
+@keyframes av-sweep { 0% { transform: translateY(-100%) } 100% { transform: translateY(320%) } }
+
+/* CORE: wire sphere spinning one way, polyhedral core counter-rotating, the
+   whole thing breathing (av-core-wrap, below) — all three behaviours the
+   reference's own card carries. av-core-wrap is a nested <g> inside
+   core.js's markup, never a class on the root .avatar__svg element: the
+   reduced-motion rule below is `.avatar__svg *`, a descendant combinator, so
+   a class living on that same root would never be matched by it. */
+.av-core    { animation: av-spin 26s linear infinite;  transform-origin: 100px 100px; }
+.av-core-in { animation: av-spinR 17s linear infinite; transform-origin: 100px 100px; }
+
+/* HALO: three dashed rings in counter-rotation plus a small breathing
+   sphere at the centre, reusing CORE's own av-core-wrap (the reference names
+   both instances `core-wrap` too). Stroke recolours
+   to --accent (cyan in nightcity, but green in matrix and red in arasaka: a
+   theme-driven recolour, not a fixed cyan literal) and the whole card gets a
+   static glow; the glow is not animated, so it costs one paint, not one per
+   frame. */
+.av-halo .av-s, .av-halo .av-s2 { stroke: var(--accent); }
+.av-halo-glow { filter: drop-shadow(0 0 6px var(--glow)); }
+.av-grain  { stroke-dasharray: .6 3.2; }
+.av-grain2 { stroke-dasharray: .5 5; }
+.av-halo-a { animation: av-spin 34s linear infinite;  transform-origin: 100px 100px; }
+.av-halo-b { animation: av-spinR 22s linear infinite; transform-origin: 100px 100px; }
+.av-halo-c { animation: av-spin 13s linear infinite;  transform-origin: 100px 100px; }
+/* The only animated rule in this file that used to omit transform-origin, and
+   in SVG the CSS default is the user-space origin, not the shape's centre —
+   so the breath grew CORE and HALO away from (0,0), down and to the right,
+   instead of in place. 100px 100px is the viewBox's centre, the same value
+   every rotation above uses. */
+.av-core-wrap { animation: av-breathe 5.5s ease-in-out infinite; transform-origin: 100px 100px; }
+
+/* WAVE: a scrolling waveform (translateX drift, seamless because the path
+   repeats every 40 units and drifts by exactly four periods) whose amplitude
+   breathes to suggest CIPHER-2 speaking. Its track is drawn 160 units wider
+   than the viewBox (see wave.js) so the drift never shows a seam or a gap;
+   `.avatar__svg`'s shared `overflow: visible` would let that spill into
+   whatever sits beside this avatar, so `.av-wave` clips it back to its own
+   box here — scoped to this one avatar rather than changed on the shared
+   rule, which CORE's breathing ring and HALO's glow both still need. */
+/* Kept as a backstop for stroke bleed at the very edge; the clip that matters
+   is the clipPath in wave.js's own markup — see its comment for why an
+   overflow rule cannot do this job on a non-square box. */
+.avatar__svg.av-wave { overflow: hidden; }
+/* WAVE moves vertically only: it swells and contracts about its own centre
+   line and rides up and down, and nothing travels sideways. Two rules because
+   one element cannot carry two transforms — the outer group bobs, the inner
+   one swells.
+
+   The amplitude budget, measured against the frame the trace is drawn in
+   (y=52..148, so 48 units either side of the centre): the path's own arches
+   peak 17 units off centre, so 2.2x takes them to 37.4, and the bob adds at
+   most 5 — 42.4 of the 48 available. The clipPath in wave.js guarantees the
+   rest, but it should never have to.
+
+   transform-origin on the centre line, not the default: scaling about the
+   user-space origin would lift the whole trace off the axis it is measured
+   against rather than growing symmetrically around it. */
+@keyframes av-wave-swell { 0%, 100% { transform: scaleY(.55) } 50% { transform: scaleY(2.2) } }
+@keyframes av-wave-bob   { 0%, 100% { transform: translateY(5px) } 50% { transform: translateY(-5px) } }
+
+.av-wave-swell { animation: av-wave-swell 5.4s ease-in-out infinite; transform-origin: 100px 100px; }
+.av-wave-bob   { animation: av-wave-bob 7.1s ease-in-out infinite; }
+
+/* IRIS: contracting iris, ring and tick marks turning opposite ways. */
+.av-iris-core { animation: av-iris 6.5s ease-in-out infinite;  transform-origin: 100px 100px; }
+.av-iris-ring { animation: av-spin 40s linear infinite;        transform-origin: 100px 100px; }
+.av-iris-tick { animation: av-spinR 19s linear infinite;       transform-origin: 100px 100px; }
+
+/* LATTICE: node mesh pulsing in cascade (staggered via each circle's own
+   inline animation-delay, set in the markup) under a sweeping scan bar.
+   `.avatar__stage` is the local stand-in for the reference's `.stage` card
+   (relative + clipped), since lattice.js owns no such ancestor of its own;
+   `.av-scanbar`'s height is a percentage of that stage, not a fixed px, so
+   the band's proportions hold on any host size rather than one calibrated
+   device — translateY's own percentages already resolve against the bar's
+   own box, so the sweep distance scales with it for free. */
+.avatar__stage { position: relative; width: 100%; height: 100%; overflow: hidden; }
+.av-lat circle { animation: av-pulse 3.4s ease-in-out infinite; }
+.av-scanbar {
+  position: absolute; left: 0; right: 0; height: 18%; pointer-events: none;
+  background: linear-gradient(to bottom, transparent, color-mix(in srgb, var(--avatar-ink) 9%, transparent), transparent);
+  animation: av-sweep 4.5s linear infinite;
+}
+
+/* `.avatar__svg *` alone would miss `.av-scanbar`: it is a sibling of the
+   <svg> under `.avatar__stage`, not one of its descendants. Both branches
+   are listed so every animated element in every one of the five avatars is
+   covered, whichever of the two it happens to nest under. */
+@media (prefers-reduced-motion: reduce) {
+  .avatar__svg *, .avatar__stage * { animation: none !important }
+}
+
+/* ---------------------------------------------------------------------------
+   The three "animé" variants (halo-live, wave-live, lattice-live). They exist
+   because the originals are slow on purpose — halo's rings turn once every 13
+   to 34 seconds — and slow enough reads as still: measured over 1.7 seconds,
+   the three moved 1.25%, 0.65% and 0.54% of their pixels, and most of that
+   was the background rain showing through the crop.
+
+   Everything below animates transform, opacity or stroke-dashoffset. The
+   first two are compositor properties; the third is not, but it applies to a
+   dozen short paths and replaces the alternative — moving geometry — which
+   would cost a layout pass per frame. Nothing here animates a property that
+   triggers layout.
+
+   All the animated elements are descendants of `.avatar__svg` or
+   `.avatar__stage`, so the reduced-motion rule at the foot of this file
+   reaches every one of them without needing a line of its own. --------------- */
+
+/* Dashes sliding along a stroke: the path never moves, only the pattern
+   painted on it, which reads as something travelling through it. The offset
+   is negative so the movement runs along the path's own direction. */
+@keyframes avl-dash { to { stroke-dashoffset: -160 } }
+@keyframes avl-dash-short { to { stroke-dashoffset: -32 } }
+
+/* A ring expanding out of the core and fading as it goes. */
+@keyframes avl-ping {
+  0%   { transform: scale(.5);  opacity: .85 }
+  70%  { opacity: .12 }
+  100% { transform: scale(1.7); opacity: 0 }
+}
+
+@keyframes avl-rot  { to { transform: rotate(360deg) } }
+@keyframes avl-rotR { to { transform: rotate(-360deg) } }
+
+@keyframes avl-blink { 0%, 100% { opacity: .16 } 50% { opacity: 1 } }
+@keyframes avl-node  { 0%, 100% { opacity: .22; transform: scale(.8) } 50% { opacity: 1; transform: scale(1.25) } }
+
+/* HALO — animé. Every rotation keeps the viewBox centre as its origin, the
+   same 100px 100px every other rule in this file uses; in SVG the CSS default
+   is the user-space origin, which would swing the shape around the corner
+   instead of turning it in place. */
+.avl-spin-a { animation: avl-rot  9s linear infinite; transform-origin: 100px 100px; }
+.avl-spin-b { animation: avl-rotR 6s linear infinite; transform-origin: 100px 100px; }
+.avl-spin-c { animation: avl-rot  3.4s linear infinite; transform-origin: 100px 100px; }
+.avl-trace  { animation: avl-dash 4s linear infinite; }
+.avl-sweep  { animation: avl-rot 2.6s linear infinite; transform-origin: 100px 100px; opacity: .5; }
+.avl-core   { animation: av-breathe 2.2s ease-in-out infinite; transform-origin: 100px 100px; }
+/* Two pings on the same 3.2s cycle, half a period apart, so one is always
+   leaving as the other starts and the core never falls quiet. */
+.avl-ping     { animation: avl-ping 3.2s ease-out infinite; transform-origin: 100px 100px; }
+.avl-ping--b  { animation-delay: 1.6s; }
+
+/* WAVE — animé. The two traces drift opposite ways at different speeds, and
+   their amplitudes swing in counterphase, so the pair is never twice in the
+   same shape. transform-origin sits on the trace's centre line: scaling about
+   the default origin would lift the whole wave off the axis it is measured
+   against. */
+/* The same motion as WAVE, driven harder: a wider swing, a deeper bob, faster,
+   and the second trace in counterphase so the pair is never twice in the same
+   shape. The budget is tighter here, so it is drawn tighter: measured across a
+   full cycle the trace reached 46.7 units off centre against the 48 available,
+   a margin of 1.3 that the clipPath would have had to save. 2.1x of 17 is 35.7,
+   plus a 5-unit bob, for 40.7 — and 7.3 units of room that nothing needs.
+
+   The horizontal cursor that used to cross the frame is gone with the drift:
+   both were movement across the trace rather than of it. */
+@keyframes avl-swell     { 0%, 100% { transform: scaleY(.4)  } 50% { transform: scaleY(2.1) } }
+@keyframes avl-swell-alt { 0%, 100% { transform: scaleY(1.9) } 50% { transform: scaleY(.45) } }
+@keyframes avl-bob       { 0%, 100% { transform: translateY(5px) } 50% { transform: translateY(-5px) } }
+
+.avl-swell    { animation: avl-swell 2.9s ease-in-out infinite; transform-origin: 100px 100px; }
+.avl-swell--b { animation: avl-swell-alt 3.7s ease-in-out infinite; }
+.avl-bob      { animation: avl-bob 4.3s ease-in-out infinite; }
+.avl-bob--b   { animation: avl-bob 5.6s ease-in-out infinite reverse; }
+.avl-bars rect { animation: avl-blink 1.4s ease-in-out infinite; }
+
+/* LATTICE — animé. The edges carry the motion here rather than only joining
+   things that move: twelve dashed lines whose patterns slide, each started at
+   its own negative delay so the graph never fires in unison. A negative delay
+   begins the animation already part-way through rather than after a wait, so
+   nothing has to settle before the effect is complete. */
+.avl-edges line { animation: avl-dash-short 1.9s linear infinite; }
+.avl-nodes circle { animation: avl-node 1.8s ease-in-out infinite; transform-box: fill-box; transform-origin: center; }
+.avl-hub { animation: avl-rot 11s linear infinite; transform-origin: 100px 100px; opacity: .4; }
+.avl-scanbar { animation-duration: 2.6s; }

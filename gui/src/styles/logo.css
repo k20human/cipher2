@@ -1,0 +1,164 @@
+/* Four selectable treatments for the CIPHER-2 wordmark, chosen by
+   layout.logoStyle and rendered by src/modules/logo.js. The first three are
+   transposed from the CIPHER-2 avatar reference mockup, not in this repo
+   (.lg1/.lg2/.lg3); major is new, modelled on a separate reference image.
+
+   Sizing: the top band's row is `auto` height (see layout.css's #deck) — it
+   takes exactly what its content needs, and whatever it takes is subtracted
+   from the middle row's 1fr. A logo sized in vw would tie its height to the
+   screen's *width*, which in this landscape-only deck is the dimension that
+   carries no information about how little vertical budget the band has (the
+   clock made exactly this mistake once, and was fixed — see layout.css's own
+   comment). Every treatment below is
+   sized off vmin instead, so it follows the constrained dimension on any
+   landscape screen, not just the 900x412 reference device.
+
+   Plain vmin, with no clamp around it, for the reason .clock__time gives at
+   length (base.css): each of these four carried a rem floor that no real
+   landscape phone can reach (they only bit below ~250px of min(width,
+   height)) and a rem ceiling that measurably did bite — at 1280x600 the
+   wordmark stopped growing and sat undersized in a band with room to spare.
+   Dead weight at one end, and at the other exactly the cap the user asked
+   to be rid of. A logo is decoration: unlike the status column, it has no
+   legibility floor to protect, so nothing here needs a bound at all. */
+
+.logo { font-weight: 700; line-height: 1; white-space: nowrap; user-select: none; }
+
+/* A — GLITCH : the wordmark cut into bands and slid sideways.
+   It used to be a chromatic fringe plus an opacity dropout at 97% of a
+   six-second cycle — a flicker lasting one frame, once every six seconds,
+   which is indistinguishable from nothing at all. The fringe stays (it is
+   what makes the base read as a bad signal rather than clean type); the
+   flicker is replaced by an actual displacement.
+
+   How the cut works. Both pseudo-elements are full copies of the wordmark,
+   laid exactly over the original and clipped to a horizontal band. Each
+   carries `background: var(--bg)`, and that opacity is the whole trick: an
+   opaque band slid sideways *covers* what it passes over, so the strip reads
+   as having been displaced rather than duplicated. A transparent copy would
+   only look like a double exposure.
+
+   steps(1, end) on both animations, so every keyframe is a hard cut. The
+   default interpolation would slide the bands smoothly into place and slide
+   them back, which is a very different thing — a glitch has no in-between
+   states. inset(50% 0 50% 0) is a band of zero height, and it is what the
+   two spend most of the cycle at: the disturbance has to be intermittent, or
+   it stops being a disturbance and becomes a texture.
+
+   The cycle is 9s, not the 3.4s this first ran at. Three disturbances in 3.4s
+   is one every 1.1 seconds, which is often enough to read as a broken display
+   rather than an occasional fault. The same three now fall in 9s, and they are
+   grouped rather than evenly spread: two close together near the start, then
+   roughly five seconds of nothing, then one alone. Evenly spaced faults sound
+   like a metronome; clustered ones sound like a bad connection. */
+.logo--glitch {
+  font-size: 5.6vmin; letter-spacing: .16em; color: var(--logo-ink);
+  position: relative;
+  /* The red/cyan fringe simulates a fixed RGB-channel split, the way a
+     misregistered CRT or a lossy capture would — a hardware artifact, not a
+     brand colour, so it stays literal on purpose rather than following the
+     theme. The rest of the effect (glyph colour, glow) still uses theme
+     variables: in nightcity and arasaka the base word still recolours, only
+     the fringe itself keeps its two fixed hues. */
+  text-shadow: 0 0 14px var(--glow), 2px 0 0 rgba(255, 0, 60, .55), -2px 0 0 rgba(0, 240, 255, .5);
+}
+
+/* / "" is the generated-content alt-text syntax: it keeps the duplicated
+   glyphs visible while giving them an empty accessible alternative, so a
+   screen reader announces the device name once rather than three times. */
+.logo--glitch::before,
+.logo--glitch::after {
+  content: attr(data-text) / "";
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 100%;
+  background: var(--bg);
+  pointer-events: none;
+}
+
+.logo--glitch::before {
+  color: var(--logo-ink);
+  text-shadow: 2px 0 0 rgba(0, 240, 255, .7);
+  animation: logo-cut-a 9s steps(1, end) infinite;
+}
+
+.logo--glitch::after {
+  color: var(--logo-ink);
+  text-shadow: -2px 0 0 rgba(255, 0, 60, .7);
+  animation: logo-cut-b 9s steps(1, end) infinite;
+}
+
+@keyframes logo-cut-a {
+  0%     { clip-path: inset(50% 0 50% 0); transform: translateX(0) }
+  3.3%   { clip-path: inset(10% 0 68% 0); transform: translateX(-0.16em) }
+  5%     { clip-path: inset(62% 0 20% 0); transform: translateX(0.11em) }
+  6.1%   { clip-path: inset(50% 0 50% 0); transform: translateX(0) }
+  11.1%  { clip-path: inset(34% 0 46% 0); transform: translateX(0.2em) }
+  12.2%  { clip-path: inset(50% 0 50% 0); transform: translateX(0) }
+  57.8%  { clip-path: inset(4% 0 80% 0);  transform: translateX(-0.24em) }
+  59%    { clip-path: inset(72% 0 10% 0); transform: translateX(0.13em) }
+  60.5%  { clip-path: inset(50% 0 50% 0); transform: translateX(0) }
+  100%   { clip-path: inset(50% 0 50% 0); transform: translateX(0) }
+}
+
+/* Fires at its own moments, never the same ones: two bands displacing in
+   unison would read as the whole word wobbling rather than as a tear. */
+@keyframes logo-cut-b {
+  0%     { clip-path: inset(50% 0 50% 0); transform: translateX(0) }
+  3.9%   { clip-path: inset(44% 0 34% 0); transform: translateX(0.18em) }
+  5.6%   { clip-path: inset(50% 0 50% 0); transform: translateX(0) }
+  11.4%  { clip-path: inset(8% 0 72% 0);  transform: translateX(-0.12em) }
+  12.5%  { clip-path: inset(66% 0 14% 0); transform: translateX(0.22em) }
+  13.6%  { clip-path: inset(50% 0 50% 0); transform: translateX(0) }
+  58.3%  { clip-path: inset(40% 0 38% 0); transform: translateX(0.16em) }
+  59.7%  { clip-path: inset(50% 0 50% 0); transform: translateX(0) }
+  100%   { clip-path: inset(50% 0 50% 0); transform: translateX(0) }
+}
+
+/* B — PLAQUE : inverted block, bevelled corners */
+.logo--plate {
+  font-size: 5.2vmin; letter-spacing: .3em;
+  color: var(--bg); background: var(--logo-ink); padding: .25rem .8rem;
+  clip-path: polygon(8px 0, 100% 0, 100% calc(100% - 8px), calc(100% - 8px) 100%, 0 100%, 0 8px);
+}
+
+/* C — CADRE : double frame, wide tracking */
+.logo--frame {
+  font-size: 4.8vmin; letter-spacing: .42em; color: var(--logo-ink);
+  border: 1px solid var(--logo-ink); padding: .4rem .9rem; position: relative;
+  text-shadow: 0 0 10px var(--glow);
+}
+.logo--frame::before {
+  content: ''; position: absolute; inset: 3px;
+  border: 1px solid color-mix(in srgb, var(--logo-ink) 30%, transparent);
+}
+
+/* D — MAJOR : angular, fragmented, after the user's reference (ref-cyberdeck-hud.jpg) */
+.logo--major {
+  font-size: 6.4vmin; letter-spacing: .1em; color: var(--logo-ink);
+  position: relative; transform: skewX(-8deg);
+  text-shadow: 0 0 10px var(--glow);
+}
+.logo--major::before, .logo--major::after {
+  /* / "" is the generated-content alt-text syntax: it keeps the duplicated
+     glyphs visible while giving them an empty accessible alternative, so a
+     screen reader announces the device name once (the real text node) rather
+     than three times (the text node plus both pseudo-elements). */
+  content: attr(data-text) / ""; position: absolute; left: 0; top: 0; width: 100%;
+  overflow: hidden; pointer-events: none;
+}
+/* Upper and lower halves are sheared apart, so the word reads as two slabs. */
+.logo--major::before { clip-path: inset(0 0 52% 0); transform: translateX(-3px); opacity: .95; }
+.logo--major::after {
+  clip-path: inset(50% 0 0 0); transform: translateX(3px); opacity: .85;
+  color: var(--logo-ink);
+}
+
+/* The pseudo-elements need naming here too: `.logo--glitch` alone would leave
+   both of them cutting away under reduced motion, since an animation on a
+   pseudo-element is not the element's own. */
+@media (prefers-reduced-motion: reduce) {
+  .logo--glitch::before,
+  .logo--glitch::after { animation: none; clip-path: inset(50% 0 50% 0); }
+}
