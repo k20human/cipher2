@@ -46,6 +46,7 @@ no outbound request.
 | `arduino/` | The `screen_wake` sketch: wake button, EC11 encoder, PIM447 trackball, button LED driven by what the phone reports. Host-side test suites in `arduino/test/`. | [arduino/README.md](arduino/README.md) |
 | `android/` | `cyberdeck-reporter`, the companion app: watches the screen and the battery, writes them to the serial port, restarts at boot. | [android/README.md](android/README.md) |
 | `gui/` | `CIPHER-2`, the deck's home screen: a PWA served from the phone by a small Python server that also exposes `GET /api/status`. | [gui/README.md](gui/README.md) |
+| `pcb/` | `cipher2-panel`, the hub board: a Pro Micro on sockets, four connectors, and the cables to the controls. Generated from a netlist, not drawn. | [pcb/README.md](pcb/README.md) |
 
 ## Hardware
 
@@ -53,6 +54,13 @@ Developed and tested on an Arduino Leonardo driving an Android phone over USB
 OTG. The board must have native USB — an Uno or a Nano cannot work — and the
 alternatives are listed in [arduino/README.md](arduino/README.md#boards). The
 phone side needs Termux and Termux:API, both from F-Droid.
+
+The controls started out on flying wires and now have a board of their own:
+`pcb/` holds a 100 × 42 mm two-layer hub that takes the Pro Micro on sockets
+and gives the button, the encoder and the trackball a connector each — they
+are mounted in the enclosure and reach it on cable. It is generated from a
+netlist rather than drawn, and a test reads `screen_wake.ino` itself to check
+the two agree — see [pcb/README.md](pcb/README.md).
 
 ## Quick start
 
@@ -75,6 +83,10 @@ gui/serve.sh
 
 # Android — unit tests (needs JDK 21 and the Android SDK)
 cd android && ./gradlew test
+
+# PCB — tests, then the fabrication package (needs KiCad 9)
+make -C pcb test
+make -C pcb fab
 ```
 
 The Arduino sketch can be exercised without the phone: `arduino/tools/inject.py`

@@ -1,0 +1,8 @@
+Ref,Val,Package,PosX,PosY,Rot,Side
+"C1","100nF","C_1206_3216Metric",75.000000,-35.000000,0.000000,top
+"J1","TRACKBALL","PinHeader_1x05_P2.54mm_Vertical",9.000000,-4.000000,90.000000,top
+"J2","SPARE","PinHeader_1x06_P2.54mm_Vertical",16.000000,-37.000000,90.000000,top
+"J3","ENCODER","PinHeader_1x05_P2.54mm_Vertical",25.000000,-4.000000,90.000000,top
+"J4","BUTTON","PinHeader_1x04_P2.54mm_Vertical",52.000000,-4.000000,90.000000,top
+"R1","150R","R_1206_3216Metric",68.000000,-35.000000,0.000000,top
+"U1","Pro Micro 5V/16MHz","ProMicro_2x12_P2.54mm",83.500000,-21.000000,-90.000000,top

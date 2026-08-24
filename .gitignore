@@ -18,3 +18,7 @@ __pycache__/
 .superpowers/
 .playwright-mcp/
 docs/superpowers/
+
+# KiCad reports, if a tool is ever run from the repo root by hand
+*-erc.rpt
+*-drc.rpt

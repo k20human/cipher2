@@ -1,0 +1,8 @@
+"Refs","Value","Footprint","Qty"
+"C1","100nF","Capacitor_SMD:C_1206_3216Metric","1"
+"J1","TRACKBALL","Connector_PinHeader_2.54mm:PinHeader_1x05_P2.54mm_Vertical","1"
+"J2","SPARE","Connector_PinHeader_2.54mm:PinHeader_1x06_P2.54mm_Vertical","1"
+"J3","ENCODER","Connector_PinHeader_2.54mm:PinHeader_1x05_P2.54mm_Vertical","1"
+"J4","BUTTON","Connector_PinHeader_2.54mm:PinHeader_1x04_P2.54mm_Vertical","1"
+"R1","150R","Resistor_SMD:R_1206_3216Metric","1"
+"U1","Pro Micro 5V/16MHz","cipher2:ProMicro_2x12_P2.54mm","1"
