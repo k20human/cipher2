@@ -60,6 +60,55 @@ La sérigraphie porte `PRO MICRO - COMPONENTS DOWN` au-dessus de son
 emplacement. Ce n'est pas un ornement : monté à l'endroit, le module met 5 V
 sur la masse du trackball et le détruit.
 
+## Les pièces d'accouplement ne sont dans aucune nomenclature
+
+`fab/bom.csv` et `fab/bom-full.csv` sont produits par `kicad-cli` depuis le
+schéma, et le schéma vient de `netlist.py`. Or `U1` **est** le module : ses
+embases et les barrettes soudées sur lui sont de la quincaillerie
+d'accouplement, pas des composants du schéma. Elles n'apparaîtront donc jamais
+dans une nomenclature générée, et c'est ce silence qui a permis d'acheter la
+mauvaise pièce. D'où cette section.
+
+| Rôle | Référence | Ce qu'il faut savoir |
+|---|---|---|
+| Embases, sur la carte | Gotronic **FH136Z**, réf. 08006 | Femelle sécable, 1 rangée de 36 points, pas 2,54 mm, contacts estampés, annoncée compatible connecteurs mâles HE14. À couper en **deux brins de 12** |
+| Barrettes, sur le module | Gotronic **HE14 MH100/4**, réf. 33565 | Mâle sécable, pas 2,54 mm, broches **0,64 × 0,64 mm** carrées, hauteur totale 11,5 mm |
+
+### Jamais de barrette tulipe
+
+L'erreur a été commise une fois : une **STB32** (barrette tulipe sécable) a été
+achetée puis soudée, et le module ne s'y enfichait pas.
+
+Un contact tulipe est un cylindre usiné, calibré pour les **pattes rondes** d'un
+composant traversant — 0,8 mm de diamètre au maximum. Une broche de barrette
+mâle est **carrée** : 0,64 mm de côté, donc **0,90 mm en diagonale**. Elle ne
+rentre pas, et forcer écarte définitivement les doigts de la tulipe.
+
+Retirer une barrette tulipe déjà soudée demande de casser son plastique pour
+libérer les contacts et les dessouder un par un : douze joints ne fondent pas
+ensemble, et tirer sur le brin entier arrache les pastilles.
+
+### Deux autres pièges de catalogue
+
+Le **FH212** porte « 2 rangées droites de 12 points » et semble taillé pour cette
+empreinte. Il ne l'est pas : ses deux rangées sont écartées de 2,54 mm, quand
+l'empreinte les veut à **15,24 mm**. C'est un connecteur double rangée ordinaire,
+pas une paire de brins.
+
+Et la longueur de broche libre se vérifie : le FH136Z fait 8,5 mm de haut, il
+faut donc **au moins 6 mm** de broche sous le module. Une barrette HE14 mesure
+11,5 mm en tout — 6 mm côté long, 2,5 mm de plastique, 3 mm côté court. C'est
+le **côté court** qui doit traverser le module ; l'autre sens ne laisse que
+3 mm et n'atteint pas les contacts.
+
+### À la repose
+
+Enficher les deux brins sur les broches du module **avant** de les poser sur la
+carte : le module sert de gabarit et garantit l'entraxe. Souder une broche à
+chaque extrémité, vérifier que le module est à plat, puis finir. Soudés à main
+levée, les deux brins dérivent chacun dans leur jeu de perçage et le module
+n'entre plus.
+
 ## Correspondance nom ↔ numéro de pastille
 
 Vide, et cette vacuité est le choix : chaque empreinte utilise soit des

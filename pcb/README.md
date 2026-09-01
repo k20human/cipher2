@@ -117,6 +117,11 @@ barrettes broches vers le bas, soit inverser l'empreinte dans
 La sérigraphie porte `PRO MICRO - COMPONENTS DOWN`. Monté à l'endroit, le
 module met **5 V sur la masse du trackball** et le détruit.
 
+**Les embases et les barrettes ne figurent dans aucune nomenclature** : elles
+accouplent `U1`, elles ne sont pas des composants du schéma, et `fab/bom.csv`
+est généré depuis ce schéma. Leurs références, et la barrette à ne surtout pas
+acheter, sont dans [`lib/PARTS.md`](lib/PARTS.md).
+
 Le connecteur USB déborde du bord droit. Une fiche coudée occupe 16 mm au-delà
 du bord ; une fiche droite en demande une cinquantaine avec sa courbure.
 **Un coudé a un sens** : retourner le module retourne son coude, et en
@@ -338,6 +343,9 @@ Le trackball meurt en silence et sans fumée. Le multimètre coûte moins cher.
 | **Polarité de la LED du bouton** — `LED+` sérigraphié | La LED n'allume pas |
 | **Milieu du groupe de trois de l'encodeur sur `GND`** | L'encodeur ne compte pas |
 | **Ordre de soudure** — R1 et C1 avant les embases | Les 1206 deviennent difficiles d'accès |
+| **Embases à contacts estampés**, jamais tulipe | Une broche carrée de 0,64 mm mesure 0,90 mm en diagonale et n'entre pas dans un contact tulipe |
+| **Embases soudées avec le module en place** comme gabarit | Soudées à main levée, les deux brins dérivent et le module n'entre plus |
+| **Pastilles de masse reprises plus chaud et plus longtemps** | Le plan de masse est en liaison pleine sur les deux faces : il pompe la chaleur et laisse un joint froid |
 | **Broches arasées sous la carte** | Trois câbles USB passent dessous ; un bourrelet de soudure finit par les user |
 
 ## Sans le module trackball
