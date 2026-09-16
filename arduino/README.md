@@ -134,6 +134,13 @@ the two of the I²C bus**.
 The bus runs at 100 kHz, `Wire`'s default. Do not speed it up: the manufacturer
 rates the module at 250 kHz maximum.
 
+**The module's orientation is baked into `decodeFrame`.** It sits a quarter turn
+round in this deck — its own "right" points at the bottom of the panel — so the
+axes are swapped once, where the module's language stops and the pointer's
+begins. Mount yours differently and the pointer will travel at an angle to the
+ball; the fix is those two lines in `trackball.h` and nothing else. The symptom
+is unmistakable: push the ball up and the cursor goes sideways.
+
 **What its LED says**
 
 | State | Colour |

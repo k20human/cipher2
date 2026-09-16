@@ -26,8 +26,8 @@ static const int16_t POINTER_GAIN = 3;
 static const int16_t POINTER_MAX  = 127;  // the limit Mouse.move imposes
 
 struct BallFrame {
-  int16_t dx;      // right - left
-  int16_t dy;      // down - up, so positive is down as Mouse.move expects
+  int16_t dx;      // positive is right, as Mouse.move expects
+  int16_t dy;      // positive is down, likewise
   // Presses counted since the previous read. Deliberately unused by the
   // sketch: a count says nothing about how long each press lasted, and hold
   // length is what picks the mouse button. It is decoded and tested because
@@ -37,10 +37,21 @@ struct BallFrame {
 };
 
 // raw is the five bytes read from REG_LEFT: left, right, up, down, switch.
+//
+// Those four names are the module's own axes, and the module is mounted a
+// quarter turn round in this deck: its "right" points at the bottom of the
+// panel. Pushing the ball right therefore raises the module's UP counter, and
+// pushing it down raises the module's RIGHT one. The axes are swapped here,
+// once, rather than anywhere further downstream -- everything above this line
+// speaks the module's language and everything below speaks the pointer's, and
+// that boundary is the only place the rotation can live without leaking.
+//
+// Remounting the module squares the deck's axes with the module's again, and
+// undoing this swap is then the whole change.
 inline BallFrame decodeFrame(const uint8_t raw[5]) {
   BallFrame f;
-  f.dx     = (int16_t)raw[1] - (int16_t)raw[0];
-  f.dy     = (int16_t)raw[3] - (int16_t)raw[2];
+  f.dx     = (int16_t)raw[2] - (int16_t)raw[3];  // module up   - module down
+  f.dy     = (int16_t)raw[1] - (int16_t)raw[0];  // module right - module left
   f.clicks = (uint8_t)(raw[4] & (uint8_t)~MSK_SWITCH_STATE);
   f.held   = (raw[4] & MSK_SWITCH_STATE) != 0;
   return f;

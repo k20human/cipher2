@@ -2,33 +2,37 @@
 
 #include "check.h"
 
-// Registers 0x04..0x08 in order: left, right, up, down, switch.
+// Registers 0x04..0x08 in order: left, right, up, down, switch. Those names
+// are the module's own axes, and the module sits a quarter turn round in this
+// deck -- see decodeFrame. Every fixture below is therefore named for the
+// direction the ball is actually pushed, which is what the pointer has to
+// follow; the register that moves is noted beside it.
 static void test_decode_pure_horizontal() {
-  const uint8_t right[5] = {0, 5, 0, 0, 0};
-  CHECK(decodeFrame(right).dx == 5);
-  CHECK(decodeFrame(right).dy == 0);
+  const uint8_t ballRight[5] = {0, 0, 5, 0, 0};  // module's UP counter
+  CHECK(decodeFrame(ballRight).dx == 5);
+  CHECK(decodeFrame(ballRight).dy == 0);
 
-  const uint8_t left[5] = {5, 0, 0, 0, 0};
-  CHECK(decodeFrame(left).dx == -5);
-  CHECK(decodeFrame(left).dy == 0);
+  const uint8_t ballLeft[5] = {0, 0, 0, 5, 0};  // module's DOWN counter
+  CHECK(decodeFrame(ballLeft).dx == -5);
+  CHECK(decodeFrame(ballLeft).dy == 0);
 }
 
 static void test_decode_pure_vertical() {
   // Down is positive y, matching what Mouse.move expects.
-  const uint8_t down[5] = {0, 0, 0, 7, 0};
-  CHECK(decodeFrame(down).dy == 7);
-  CHECK(decodeFrame(down).dx == 0);
+  const uint8_t ballDown[5] = {0, 7, 0, 0, 0};  // module's RIGHT counter
+  CHECK(decodeFrame(ballDown).dy == 7);
+  CHECK(decodeFrame(ballDown).dx == 0);
 
-  const uint8_t up[5] = {0, 0, 7, 0, 0};
-  CHECK(decodeFrame(up).dy == -7);
-  CHECK(decodeFrame(up).dx == 0);
+  const uint8_t ballUp[5] = {7, 0, 0, 0, 0};  // module's LEFT counter
+  CHECK(decodeFrame(ballUp).dy == -7);
+  CHECK(decodeFrame(ballUp).dx == 0);
 }
 
 static void test_decode_takes_the_difference_not_the_larger() {
   // Both counters of an axis can be non-zero in one sample: the ball wobbled.
   // Reporting the difference is the whole job; reporting either raw counter
   // would move the pointer for movement that cancelled out.
-  const uint8_t both[5] = {2, 5, 1, 4, 0};
+  const uint8_t both[5] = {2, 5, 4, 1, 0};
   CHECK(decodeFrame(both).dx == 3);
   CHECK(decodeFrame(both).dy == 3);
 
@@ -39,11 +43,11 @@ static void test_decode_takes_the_difference_not_the_larger() {
 
 static void test_decode_full_scale_counters_do_not_wrap() {
   // Each counter is a byte; the difference needs a wider signed type.
-  const uint8_t maxPos[5] = {0, 255, 0, 255, 0};
+  const uint8_t maxPos[5] = {0, 255, 255, 0, 0};
   CHECK(decodeFrame(maxPos).dx == 255);
   CHECK(decodeFrame(maxPos).dy == 255);
 
-  const uint8_t maxNeg[5] = {255, 0, 255, 0, 0};
+  const uint8_t maxNeg[5] = {255, 0, 0, 255, 0};
   CHECK(decodeFrame(maxNeg).dx == -255);
   CHECK(decodeFrame(maxNeg).dy == -255);
 }
